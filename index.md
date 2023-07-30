@@ -5,21 +5,13 @@ layout: home
 hero:
   name: "Ennen.dev Blog"
   text: "Just my personal blog. Built with vitepress."
-  tagline: My great project tagline
-  actions:
-    - theme: brand
-      text: Markdown Examples
-      link: /markdown-examples
-    - theme: alt
-      text: API Examples
-      link: /api-examples
 
 features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  - title: Rapper Vocabulary Analyzer
+    details: Serverless Web App to analyze the vocabulary of your favorite rapper.
+    link: /rapper-vocabulary-analyzer
+  - title: Slack Vuesualizer (I might actually write this post at some point)
+    details: Slack App to visualize your team's Slack usage.
+    link: /slack-vuesualizer
 ---
 
