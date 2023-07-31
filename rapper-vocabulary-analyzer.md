@@ -88,7 +88,7 @@ Other options like RDS I had already used in the past, and their pricing model, 
 
 <iframe style="border-radius:12px" src="https://open.spotify.com/embed/album/3tQd5mwBtVyxCoEo4htGAV?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
 
-Now that we've talked a little about the tools used, let's get into the gritty details.
+Now that we've talked a little about the tools used, without further ado, let's get into the gritty details.
 
 ### The Backend
 
@@ -116,9 +116,25 @@ These use cases dictate what functionality would need to be implemented by the i
 That is, anything involving any of the mentioned services like storage, the message queue or downloading lyrics.
 
 A thing that I needed some time to come to grips with was the fact that use cases have to be triggered in a specific order - however, they can't really invoke one another as this would lead to a single lambda function doing all the work.
-In order to achieve the needed decoupling, I opted for firing integration events whenever a use case finished, which in turn trigger the next lambda function in the chain. That way I could theoretically scale each use case differently e.g. the one that does the downloading or parsing, which brings me to the next layer.
+In order to achieve the needed decoupling, I opted for firing integration events whenever a use case finishes, which in turn trigger the next lambda function in the chain.
+
+Here's what such an integration event looks like in practice:
+
+```typescript
+export type FetchedSongsEvent = IntegrationEvent<'fetchedSongs'> & {
+  songs: SongDto[];
+};
+```
+
+It extends a base type which contains the `eventType` and then adds whatever data is needed for the next lambda function to do its job.
+
+That way I could theoretically scale each use case differently e.g. the one that does the downloading or parsing, which brings me to the next layer.
 
 #### Infrastructure
+
+Before talking about the code compromising this part of the application, let's have a look at the infrastructure I ended up using from the point of starting an analysis run for an artist.
+
+![infrastructure](assets/aws.png)
 
 At first I was using a single queue to handle all events, as there are what AWS calls `filters` which allow selecting events according to certain fields in the message.
 In my case there's `eventType` which is a string that denotes the event that was fired and could therefore be used to select the correct event from the queue.
@@ -151,7 +167,7 @@ If this part were in the infrastructure layer I feel the resulting bidirectional
 
 ### The Frontend
 
-The frontend is a basic [Vue](https://vuejs.org) SPA which uses the HTTP API provided by the lambdas to fetch  data and display it.
+The frontend is a basic [Vue](https://vuejs.org) SPA which uses the HTTP API provided by the lambdas to fetch  data and display it in a basic scatter plot using [ChartJS](https://www.chartjs.org/).
 As this is my home turf I wanted to get it over with as quickly as possible, which is why I didn't bother with making it responsive or even look too pleasing in general.
 I did add some component tests for the sake of it, but nothing too fancy.
 
@@ -162,6 +178,9 @@ I did add some component tests for the sake of it, but nothing too fancy.
 Now that we've talked about the code, let's go into a little more depth about the deployment process.
 As I mentioned earlier, this project is deployed using the Serverless Framework.
 This means all infrastructure is defined in a `serverless.yaml` file, which is then used to deploy the application to AWS via the `sls` CLI.
+To be more precise, it's split up into two `serverless.yaml` files, one for the backend and one for the frontend, which can be called separately or together via [Serverless Compose](https://www.serverless.com/framework/docs/guides/compose).
+
+There's a CI/CD pipeline running on [GitHub Actions](https://https://github.com/features/actions) which is triggered on every push to the `main` branch and runs the tests, builds the application and deploys it to AWS.
 While this is quite nice, it's not as straightforward or easy as I had hoped.
 
 One thing I struggled with *majorly* at the beginning was the fact that I had to transpile the TypeScript code before deploying it.
