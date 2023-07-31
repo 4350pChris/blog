@@ -81,10 +81,11 @@ I had also considered using [SNS](https://aws.amazon.com/sns/), but decided agai
 
 ### Database
 
-For the database, I decided to go with [DynamoDB](https://aws.amazon.com/dynamodb/), mostly because I wanted to try it out and it seemed like a good fit for this project as there will be no complex relations and the data model is quite simple.
+For the database, I decided to go with [DynamoDB](https://aws.amazon.com/dynamodb/) which is less of a full-blown database and more of a key value store.
+Mostly because I wanted to try it out and it seemed like a good fit for this project as there will be no complex relations and the data model is quite simple.
 Other options like RDS I had already used in the past, and their pricing model, while still covered by the free tier, seemed less generous than that of DynamoDB.
 
-## Enter The Cloud (36 Layers)
+## Enter The Cloud (36 Chapters)
 
 <iframe style="border-radius:12px" src="https://open.spotify.com/embed/album/3tQd5mwBtVyxCoEo4htGAV?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
 
@@ -95,9 +96,6 @@ Now that we've talked a little about the tools used, without further ado, let's 
 For the backend, I decided to go more or less full-on DDD. This first involved a lot of reading both on the topic of DDD itself and code implementing its proposed patterns.
 I tried to follow hexagonal architecture which also proved to be not quite straightforward. All in all I would say this requires a different style of thinking about structuring your code from the one I was used to, which was both challenging but also quite fun.
 In addition I intended to be thorough with unit testing, which worked out quite well.
-As you can see, I ended up with a test coverage of almost 100% (excluding the lambda handlers though):
-
-![Screenshot of the test coverage](./assets/coverage.png)
 
 #### The Domain
 
@@ -139,7 +137,11 @@ Before talking about the code compromising this part of the application, let's h
 At first I was using a single queue to handle all events, as there are what AWS calls `filters` which allow selecting events according to certain fields in the message.
 In my case there's `eventType` which is a string that denotes the event that was fired and could therefore be used to select the correct event from the queue.
 Now, this led to a peculiar thing to happen (for the uninitiated, at least) - jobs would execute only sometimes.
-Other times they would simply vanish into the void. But why? Well, after *hours* of troubleshooting (no kidding) I finally found the section in the docs that explained what was happening.
+Other times they would simply vanish into the void. But why?
+
+<iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/1APrKVAuOsotWulrz0GyAz?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+
+Well, after *hours* of troubleshooting (no kidding) I finally found the section in the docs that explained why my lambdas weren't firing.
 
 ::: info
 If a lambda receives an event and the filter does not match, it silently discards the received message.
@@ -153,7 +155,10 @@ I felt like a single queue *is* the best abstraction, as we want *one* message b
 This is what I had alluded to earlier - the solution to this is to use an SNS topic and have queues subscribe to it.
 In contrast to SQS, SNS does not delete messages from the topic in this instance, as it does not care about subscribers not caring for a particular topic and will simply send events to all subscribers that are interested in the current message.
 While this technically still requires separate SQS queues for each event, I found these to lend themselves much better to the way Serverless' configuration works.
+
+::: info
 This is called the [Fanout Pattern](https://docs.aws.amazon.com/sns/latest/dg/sns-common-scenarios.html) and is a quite common way to handle this problem.
+:::
 
 Apart from this, there isn't anything too interesting about the infrastructure layer.
 It implements a repository to fetch the artist from DynamoDB, a service to fetch lyrics from the [Genius API](https://api.genius.com), a service to fire the aforementioned integration events using SNS and other things which mostly act as glue between the domain and the actual data structures which are stored in the database or sent via queues.
@@ -163,7 +168,32 @@ It implements a repository to fetch the artist from DynamoDB, a service to fetch
 Last but not least, there's a separate layer which represents the API.
 While this could also be integrated into the infrastructure layer I felt like a separate folder might be suited better as this involves quite a lot of glue code, e.g. for validating input data for events or HTTP requests.
 Moreover, this is the part of the application that actually utilizes the use cases from the application layer.
-If this part were in the infrastructure layer I feel the resulting bidirectionally dependencies, i.e. the application layer using repositories from the infrastructure and the infrastructure importing use cases from the application layer, might lead to confusion or even circular dependencies.
+If this part were in the infrastructure layer I feel the resulting bidirectional dependencies, i.e. the application layer using repositories from the infrastructure and the infrastructure importing use cases from the application layer, might lead to confusion or even circular dependencies.
+
+#### Unit Testing
+
+As I mentioned earlier, I wanted to be thorough with unit testing.
+I ended up with a test coverage of almost 100% (excluding the lambda handlers though):
+
+![Screenshot of the test coverage](./assets/coverage.png)
+
+As a test framework I used [ava](https://github.com/avajs/ava) and for mocking I used [testdouble](https://github.com/testdouble/testdouble.js) both of which were new to me and both of which I found to be quite nice to work with.
+A lot better than jest, at least.
+One thing to be said for DDD is that it lends itself *extremely* well to unit testing as the layers are very well separated and should be easy to test in isolation.
+If they're not, you're probably doing something wrong.
+And this kind of immediate feedback regarding your architecture is something I really appreciated while working on this project.
+
+#### Integration Testing
+
+This is something I struggled with and in the end didn't implement in any meaningful way.
+One of the barriers was that I didn't want to setup an entire infrastructure for testing purposes as I feared I might go over my free tier limits.
+Another barrier is that integration testing is *hard* to do. And even harder to do right.
+While Serverless does offer a ridiculously hidden away and badly documented way to run some tests automatically that invoke your functions I found this approach to be lackluster at best and completely useless any other time.
+I think this may be the biggest part that's missing in this project but it seemed to be too much of a hassle to get it to work properly to warrant me going through all the hoops of either mocking out way too much of the implementation details of SQS (e.g. the message format including an MD5 hash) or having every test run set up its own infrastructure.
+Or maybe a hybrid where there is a testing infrastructure we can deploy lambdas to.
+
+My hunch is that this is a general problem with room to improve on not just in this particular case but in general.
+I also seemed to find that there is curiously little good information on this topic.
 
 ### The Frontend
 
@@ -175,13 +205,17 @@ I did add some component tests for the sake of it, but nothing too fancy.
 
 ### Deployment
 
-Now that we've talked about the code, let's go into a little more depth about the deployment process.
 As I mentioned earlier, this project is deployed using the Serverless Framework.
 This means all infrastructure is defined in a `serverless.yaml` file, which is then used to deploy the application to AWS via the `sls` CLI.
-To be more precise, it's split up into two `serverless.yaml` files, one for the backend and one for the frontend, which can be called separately or together via [Serverless Compose](https://www.serverless.com/framework/docs/guides/compose).
+To be more precise, it's split up into two `serverless.ts` files (yes you can use TypeScript for this), one for the backend and one for the frontend, which can be called separately or together via [Serverless Compose](https://www.serverless.com/framework/docs/guides/compose).
 
 There's a CI/CD pipeline running on [GitHub Actions](https://https://github.com/features/actions) which is triggered on every push to the `main` branch and runs the tests, builds the application and deploys it to AWS.
 While this is quite nice, it's not as straightforward or easy as I had hoped.
+
+::: info
+Serverless only supports CI/CD if you're using a YAML file.
+What a bummer.
+:::
 
 One thing I struggled with *majorly* at the beginning was the fact that I had to transpile the TypeScript code before deploying it.
 At first I figured I could just use `tsc` to compile the project via the command line.
@@ -246,3 +280,31 @@ Something I didn't get to really try out was the ability to deploy to multiple s
 
 On a side note - every lambda function that isn't invoked for a certain period of time needs some time to start before it can run.
 And while this shouldn't be an issue when you have users using basically all of your lambdas every now and then (psst... or you use another [plugin](https://www.serverless.com/plugins/serverless-plugin-warmup)) it's still something I found to be annoying from time to time.
+
+### Error Handling
+
+<iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/4k26Z0ncaGQ6JisQblsCom?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+
+Shit happens. We can try to prevent it, but it will happen.
+And when it does hit the fan(out architecture) we'd like to at least know about it.
+
+Ok sorry for that joke. Anyways.
+
+Since all functions run in lambdas triggered via HTTP calls or SQS subscriptions and both of these have a dedicated error handling middleware in [Middy](https://middy.js.org) which I'm using already for various other things like input validation, setting headers, etc. we get a neat way to automatically handle errors in our lambda functions.
+This only supposes letting these errors "bubble up" the call chain.
+Which is quite convenient as that's what happens anyways when we *don't* handle any errors.
+
+There is a point to be made here about the difference between recoverable and disastrous errors.
+For recoverable errors, we would like to return a semantically relevant error to the caller which might have been a user triggering an invalid operation.
+For disastrous errors we probably need to abort everything we're doing and restart the application, in a more traditional setting that is.
+In a serverless setting, we can simply let the lambda function fail and let the infrastructure handle it.
+As every lambda only runs a use case that either fails or succeeds as a whole we don't have to concern ourselves with restarting our entire application as there is no application to restart in this sense.
+
+To be fair - I don't distinguish between them and really don't have any proper error handling in place at the moment.
+Errors are simply logged to CloudWatch and that's it.
+While this was enough for debugging purposes during development, it's way undersized for production.
+The frontend doesn't respond properly to errors either, but that's okay in my opinion as my focus was on the backend and I simply didn't want to bother with these types of bells and whistles.
+
+Another side note on an error I only encountered later on - with DynamoDB I quickly got to the point where I was hitting the capacity limits and was throttled. This effectively means that the operation will fail.
+Usually this happened due to me refreshing the page too often, which would fetch all artists from the database.
+Increasing them of course worked, but I was a little surprised to see me hitting the limits of free tier even though I was only using the application myself and there was no way for me to reduce the size of the items I was fetching any further.
