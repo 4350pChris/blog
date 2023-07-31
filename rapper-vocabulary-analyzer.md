@@ -2,22 +2,28 @@
 
 [[toc]]
 
-## Ideas
-
-- Fan Out Architecture
-- DDD
-- unit testing
-- That vocab analyzer site (screenshot)
-- Services used (AWS Lambda, SQS, Serverless) contrast with k8s
-- TLS cert? Kinda hard to do with serverless
-- Automating deployment was kinda hard
-- Response times due to warmup
-
 ## Introduction
+
+> After several unsuccessful attempts to weld my results together into
+> such a whole, I realized that I should never succeed. The best that I
+> could write would never be more than philosophical remarks; my
+> thoughts were soon crippled if I tried to force them on in any single
+> direction against their natural inclination.
+> [...]
+> I should have liked to produce a good book. This has not come about, but the time is past in which I could improve it.
+
+> *Ludwig Wittgenstein* on his impending deadline. The deadest of lines as far as deadlines go as he passed away shortly after writing this.
+
+::: info
+The songs are meant to provide comic relief during the reading of this semi-coherent rambling.
+Yes there's an album, and yes you should listen to it before proceeding.
+Not because it has anything to do with this text but because it's a really good album.
+:::
 
 <iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/7fXPWrFoxtEGnoxu67ZjQa?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
 
-There exists a peculiar link between Hip Hop music and me starting my journey as a programmer which I would like to expand on before getting into the gritty details of the project resulting from a chain of events that were set in motion more than a decade ago.
+Hip Hop music and me starting my journey as a programmer are connected through a peculiar link which I would like to expand on before getting into the gritty details of this project resulting from a chain of events that were set in motion more than a decade ago.
+
 I've been a big fan of Hip Hop music ever since discovering Eminem when I was around 10 years old.
 I still remember listening to his first albums on my CD player while diligently reading the lyrics to every song until I had memorized entire albums by heart - a habit I still have to this day.
 At the time, I was far from being a proficient English speaker, so I had to look up a lot of the words and even knew some only by their phonetics.
@@ -25,7 +31,7 @@ I don't quite know what it was, but something had sparked my interest in both th
 
 ![Screenshot of the rapper ranking website](./assets/ranking.png)
 
-Lo and behold, my favorite rapper at the time, Aesop Rock, was at the top of the list with a whopping 7,879 unique words used throughout his songs. If you know you know - no surprises there. However, some of the artists I was listening to at the time didn't appear at all.
+Lo and behold, my favorite rapper at the time, Aesop Rock, was at the top of the list with a whooping 7,879 unique words used throughout his songs. If you know you know - no surprises there. However, some of the artists I was listening to at the time didn't appear at all.
 Consequently, I did the only thing any reasonable person with a little too much time on their hands would do: I started to learn Python, the goal being to write a [script](https://github.com/4350pChris/LyricAnalyzer) to scrape the lyrics of artists I was listening to and run the same analysis on them.
 During that time I realized - I really dig programming.
 
@@ -41,7 +47,7 @@ Well, I did. So that's exactly what I did. Now let's get to it.
 <iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/7lPJ5PrQnQRurUZIzMCQib?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
 
 First off, let's talk shortly about the tools I used to build this project and why I chose them.
-One thing to be said for the infrastructural decision making process is that on one hand I was trying to have a look at services I hadn't used before, while on the other hand I had to keep within the limits of the free tier of AWS, as I didn't want to spend any money on this project.
+One thing to be said for the infrastructural decision making process is that on one hand I was trying to have a look at services I hadn't used before, while on the other hand I had to stay within the limits of the free tier of AWS, as I didn't want to spend any money on this project.
 Some of them I will go into more detail later on, but for now, let's just have a quick overview.
 
 ### Code
@@ -49,20 +55,20 @@ Some of them I will go into more detail later on, but for now, let's just have a
 I was torn between using [Go](https://golang.org/) and [Rust](https://www.rust-lang.org/) for this project, as I had been wanting to learn both for quite some time. However, I decided against it, as I wanted to focus on the cloud services and not on learning a new language.
 Therefore I decided to go with [TypeScript](https://www.typescriptlang.org/), as I'm quite familiar with it and like it a lot.
 In terms of code structure I wanted to try out [Domain-driven Design](https://en.wikipedia.org/wiki/Domain-driven_design), as I had never used it before and it seemed like a good fit for this project, as it tends to lend itself better to a microservices approach than other architectures.
-While this isn't a microservices project per se, I figured I might as well give it a shot to see how it works out.
+While this isn't a microservices project per se, I figured I might as well pretend and it a shot to see how it works out.
 
-### Hosting the Backend - K8s vs Serverless
+### Hosting - K8s vs Serverless
 
 Since one of the prerequisites for this project was to use some sort of cloud service, I had to choose between writing a more traditional application and deploying it to a Kubernetes cluster or using a serverless approach.
 I had already worked with Kubernetes in the past and, while I do like it a lot, I wanted to use this project as an opportunity to learn something new, as I had never written a proper serverless application before, which is why I decided to go with the latter.
 
-### Lambda Deployment
+### Lambdas
 
 The next step was finding a way to deploy my application to the cloud. I had seen the horrors of ~~war~~ manually deploying lambda functions in blog posts pretending that this was a-okay and decided I would have none of that.
 Out of the box, AWS offers a way to deploy lambda functions using CloudFormation via [SAM](https://aws.amazon.com/serverless/sam/), but I didn't want to lock myself in too much, plus I had heard a lot of good things about the [Serverless Framework](https://www.serverless.com/) and decided to give it a shot.
 Another option would've been [Terraform](https://www.terraform.io/), but I had already used it in the past and wanted to try something new.
 
-### Website Deployment
+### Website
 
 For the website, I decided to stick with Serverless as well and integrate the deployment into the same pipeline as the backend.
 For something so simple, this was surprisingly hard to do, but more on that later.
@@ -70,7 +76,7 @@ For something so simple, this was surprisingly hard to do, but more on that late
 ### Message Queues
 
 Since I was quite sure I wouldn't want to do all of the work in a single lambda function, I needed a way to communicate between them.
-For this, I decided to use [SQS](https://aws.amazon.com/sqs/), as I had already commited to using AWS and this seemed like the way to go.
+For this, I decided to use [SQS](https://aws.amazon.com/sqs/), as I had already committed to using AWS and this seemed like the way to go.
 I had also considered using [SNS](https://aws.amazon.com/sns/), but decided against it, as I didn't see the purpose at the time. This proved to be a mistake, albeit one that was quite straightforward to fix, as I will explain later.
 
 ### Database
@@ -88,11 +94,14 @@ Now that we've talked a little about the tools used, let's get into the gritty d
 
 For the backend, I decided to go more or less full-on DDD. This first involved a lot of reading both on the topic of DDD itself and code implementing its proposed patterns.
 I tried to follow hexagonal architecture which also proved to be not quite straightforward. All in all I would say this requires a different style of thinking about structuring your code from the one I was used to, which was both challenging but also quite fun.
-I ended up having four different layers: 
+In addition I intended to be thorough with unit testing, which worked out quite well.
+As you can see, I ended up with a test coverage of almost 100% (excluding the lambda handlers though):
+
+![Screenshot of the test coverage](./assets/coverage.png)
 
 #### The Domain
 
-The domain I ended up with is a quite simple one, consisting of a single aggregate root, the `Artist`, which contains a list of `Songs` and the calculated `Stats` for the artist. As I wanted to avoid having a, so called, "anemic domain model", I decided to make the `Artist` responsible for calculating its own stats, which is why it contains a reference to its `Songs` and not the other way around. However, I achieved a decoupling of the entity and the logic by using a `StatsCalculator` interface which is implemented by a class which is, in turn, injected into the `Artist` by its accompanying `ArtistFactory`.
+The domain I ended up with is a quite simple one, consisting of a single aggregate root, the `Artist`, which contains a list of `Songs` and the calculated `Stats` for the artist. As I wanted to avoid ending up with a so called "anemic domain model", I decided to make the `Artist` responsible for calculating its own stats, which is why it contains a reference to its `Songs` and not the other way around. However, I achieved a decoupling of the entity and the logic by using a `StatsCalculator` interface which is implemented by a class which is, in turn, injected into the `Artist` by its accompanying `ArtistFactory`.
 
 Quite a lot of abstractions already at this point for something so simple, but that seems to be the point in this case as it does allow for quite a lot of flexibility.
 Also, I meant to go a little overboard on this, just to see what happens.
@@ -123,11 +132,12 @@ If a lambda receives an event and the filter does not match, it silently discard
 This subverted my initial expectation that these messages would simply be passed over silently, staying in the queue for the correct handler to pick them up.
 
 So my first solution was to use a separate queue for each integration event.
-However, upon reflecting a little on this I came to the conclusion that this was highly unwieldly - I would have to add a queue in the `serverless.yaml` every time I wanted to implement a new type of event and I didn't seem to find a nice way to have no duplicate code when it came to handling and firing events.
+However, upon reflecting a little on this I came to the conclusion that this was highly unwieldy - I would have to add a queue in the `serverless.yaml` every time I wanted to implement a new type of event and I didn't seem to find a nice way to have no duplicate code when it came to handling and firing events.
 I felt like a single queue *is* the best abstraction, as we want *one* message bus for the application.
 This is what I had alluded to earlier - the solution to this is to use an SNS topic and have queues subscribe to it.
 In contrast to SQS, SNS does not delete messages from the topic in this instance, as it does not care about subscribers not caring for a particular topic and will simply send events to all subscribers that are interested in the current message.
 While this technically still requires separate SQS queues for each event, I found these to lend themselves much better to the way Serverless' configuration works.
+This is called the [Fanout Pattern](https://docs.aws.amazon.com/sns/latest/dg/sns-common-scenarios.html) and is a quite common way to handle this problem.
 
 Apart from this, there isn't anything too interesting about the infrastructure layer.
 It implements a repository to fetch the artist from DynamoDB, a service to fetch lyrics from the [Genius API](https://api.genius.com), a service to fire the aforementioned integration events using SNS and other things which mostly act as glue between the domain and the actual data structures which are stored in the database or sent via queues.
@@ -137,4 +147,83 @@ It implements a repository to fetch the artist from DynamoDB, a service to fetch
 Last but not least, there's a separate layer which represents the API.
 While this could also be integrated into the infrastructure layer I felt like a separate folder might be suited better as this involves quite a lot of glue code, e.g. for validating input data for events or HTTP requests.
 Moreover, this is the part of the application that actually utilizes the use cases from the application layer.
-If this part were in the infrastructure layer I feel the resulting bidirectionality of dependencies, i.e. the application layer using repositories from the infrastructure and the infrastructure importing use cases from the application layer, might lead to confusion or even circular dependencies.
+If this part were in the infrastructure layer I feel the resulting bidirectionally dependencies, i.e. the application layer using repositories from the infrastructure and the infrastructure importing use cases from the application layer, might lead to confusion or even circular dependencies.
+
+### The Frontend
+
+The frontend is a basic [Vue](https://vuejs.org) SPA which uses the HTTP API provided by the lambdas to fetch  data and display it.
+As this is my home turf I wanted to get it over with as quickly as possible, which is why I didn't bother with making it responsive or even look too pleasing in general.
+I did add some component tests for the sake of it, but nothing too fancy.
+
+![Screenshot of the frontend](./assets/frontend.png)
+
+### Deployment
+
+Now that we've talked about the code, let's go into a little more depth about the deployment process.
+As I mentioned earlier, this project is deployed using the Serverless Framework.
+This means all infrastructure is defined in a `serverless.yaml` file, which is then used to deploy the application to AWS via the `sls` CLI.
+While this is quite nice, it's not as straightforward or easy as I had hoped.
+
+One thing I struggled with *majorly* at the beginning was the fact that I had to transpile the TypeScript code before deploying it.
+At first I figured I could just use `tsc` to compile the project via the command line.
+However, this proved to be wrong. I mean it works in theory - but the size of the resulting code is **huge**.
+This seems to be due to the fact that `tsc` does not do any tree shaking.
+
+<img src="/assets/no-biggie.jpg" alt="No biggie" style="width:16rem; height: 16rem; margin: 0 auto; border-radius:16px;" />
+
+There's a library for anything, right? Right.
+More than one, in fact.
+Or, in the case of Serverless, there's plugins.
+
+As I wanted to avoid webpack and the complexity of configuring it that usually accompanies it, I decided to go with [esbuild](https://esbuild.github.io/), for which a [plugin for Serverless](https://www.serverless.com/plugins/serverless-esbuild/) exists.
+After some work I had a working setup which would transpile the code and deploy it to AWS.
+For the backend, that is.
+
+The frontend I meant to deploy to S3, which seems to be the *AWS way* of doing things.
+So far so good. There's a [plugin](https://www.serverless.com/plugins/serverless-finch) for that, obviously.
+One thing I had to figure out was how to tell the frontend where the API gateway resides as this URL is different for each deployment.
+This screams environment variables.
+But how to inject them?
+Well, for the backend which needs a connection to DynamoDB or SNS this was quite easy, as Serverless has a built-in way of doing this.
+However, the frontend needs to be deployed after the backend, as it needs to know the URL of the API gateway, and it then needs to have that injected at build time.
+Guess what? There's a [plugin](https://www.serverless.com/plugins/serverless-build-client) for that which also conveniently handles the build process for you.
+Then once it's deployed to S3 you can access it via HTTP.
+But what about HTTP**S**?
+Well, this is also a little more complicated than I had hoped.
+I had used other cloud providers like [Vercel](https://vercel.com/) or [Netlify](https://www.netlify.com/) in the past and they all offer a way to get a TLS certificate for your domain.
+Oh, and also a domain. Which is just a subdomain of their own domain, but you take what you can get.
+
+With AWS, however, there is no option that makes hosting a proper website anywhere near as easy.
+There is [CloudFront](https://aws.amazon.com/cloudfront/) which is a CDN that can be used to serve static websites, but it doesn't offer a way to get a domain assigned for your bucket, at least from what I could tell.
+And that's a big L for AWS in my book.
+And that's why I stopped at this point and figured I'll just serve it over HTTP.
+I've had enough.
+
+<iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/5LZ4d69L4TK8hVyh2q7YEJ?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+
+I would like to pause here for a moment.
+While this seems *easy enough* and there are a lot of plugins surrounding Serverless that do their job well it took me quite a while to figure out how to get all this to work.
+Far more time than I would've spent on this if I had just used a more traditional approach.
+Slap it into a Docker image, deploy it to a Kubernetes cluster or even just a simple server, done.
+And while I'm sure it gets easier as you get more familiar with the tools, I can't help but feel that something is a little... off.
+This becomes more evident when looking at the development process.
+
+Using all these cloud services - how do you develop locally?
+Well, you don't.
+Or at least I didn't.
+While there exist ways to emulate these services locally, none of them worked out of the box for me.
+Then there's also limitations around some of the services you emulate, which means that you can never be sure that something which works locally will also work in production.
+Or, more likely, the other way around.
+So you just develop locally and then you kind of deploy your code and hope for the best.
+Hope, because you'll be waiting about a minute for your changes to be deployed to AWS.
+Every. Single. Time.
+I know that there's ways to speed this up, but in comparison to the development experience I'm used to where "deploying" means saving the file, this is orders of magnitude slower.
+Seriously, this is the antithesis of fun.
+
+On the other hand, this forces you to be thorough with your unit testing for the sake of your own sanity which is a good thing in some twisted sense.
+
+A thing that must be said for this type of development process is that I would imagine it to be quite nice for teams as you don't have to go through the process of setting up a complete environment on your machine and you can just start to deploy lambda functions which neatly tie into the rest of the application.
+Something I didn't get to really try out was the ability to deploy to multiple stages, e.g. a staging and a production environment, as I didn't want to exceed my free tier limits and also didn't see the need to go quite that far.
+
+On a side note - every lambda function that isn't invoked for a certain period of time needs some time to start before it can run.
+And while this shouldn't be an issue when you have users using basically all of your lambdas every now and then (psst... or you use another [plugin](https://www.serverless.com/plugins/serverless-plugin-warmup)) it's still something I found to be annoying from time to time.
