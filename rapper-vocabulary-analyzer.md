@@ -50,10 +50,16 @@ First off, let's talk shortly about the tools I used to build this project and w
 One thing to be said for the infrastructural decision making process is that on one hand I was trying to have a look at services I hadn't used before, while on the other hand I had to stay within the limits of the free tier of AWS, as I didn't want to spend any money on this project.
 Some of them I will go into more detail later on, but for now, let's just have a quick overview.
 
-### Code
+### Lyrics
 
-I was torn between using [Go](https://golang.org/) and [Rust](https://www.rust-lang.org/) for this project, as I had been wanting to learn both for quite some time. However, I decided against it, as I wanted to focus on the cloud services and not on learning a new language.
-Therefore I decided to go with [TypeScript](https://www.typescriptlang.org/), as I'm quite familiar with it and like it a lot.
+For the lyrics I used the [Genius API](https://docs.genius.com/), simply because this is the website I grew up reading lyrics on and they offer a free API to search for artists and songs.
+However, it doesn't provide any statistics or even lyrics to songs.
+What it does provide is a link to the actual lyrics on their website, which is why I had to scrape them from there.
+
+### Language
+
+Initially I was torn between using [Go](https://golang.org/) and [Rust](https://www.rust-lang.org/) for this project, as I had been wanting to learn both for quite some time. However, I decided against it, as I wanted to focus on the cloud services and not on learning a new language.
+Therefore, I decided to go with [TypeScript](https://www.typescriptlang.org/), as I'm quite familiar with it and like it a lot.
 In terms of code structure I wanted to try out [Domain-driven Design](https://en.wikipedia.org/wiki/Domain-driven_design), as I had never used it before and it seemed like a good fit for this project, as it tends to lend itself better to a microservices approach than other architectures.
 While this isn't a microservices project per se, I figured I might as well pretend and it a shot to see how it works out.
 
@@ -161,7 +167,7 @@ This is called the [Fanout Pattern](https://docs.aws.amazon.com/sns/latest/dg/sn
 :::
 
 Apart from this, there isn't anything too interesting about the infrastructure layer.
-It implements a repository to fetch the artist from DynamoDB, a service to fetch lyrics from the [Genius API](https://api.genius.com), a service to fire the aforementioned integration events using SNS and other things which mostly act as glue between the domain and the actual data structures which are stored in the database or sent via queues.
+It implements a repository to fetch the artist from DynamoDB, a service to fetch lyrics from the [Genius API](https://docs.genius.com), a service to fire the aforementioned integration events using SNS and other things which mostly act as glue between the domain and the actual data structures which are stored in the database or sent via queues.
 
 #### Presentation Layer
 
@@ -375,5 +381,24 @@ const handler: ValidatedEventAPIGatewayProxyEvent<FromSchema<typeof schema>> = a
 
 While this works quite well for a project of this scope I'd imagine it to become cumbersome as the project grows.
 Also, this majorly hinders tree-shaking as the container imports all *possible* dependencies, even when they're not needed.
-I'm sure there's a better way to go about this and construct a proper dependency graph that allows pruning unneeded dependencies. Maybe by having classes register themselves dynamically when being imported which I think is possibility that Awilix offers.
+I'm sure there's a better way to go about this and construct a proper dependency graph that allows pruning unneeded dependencies. Maybe by having classes register themselves dynamically when being imported which I think is a possibility that Awilix offers.
 I still stuck with this though as it did work and I didn't feel like rewriting some part *again*.
+
+### Configuration
+
+In general we need to distinguish between two groups here.
+There's general configuration like the API endpoint or the name of the DynamoDB table.
+These we can usually easily handle via environment variables.
+And then there's what might be called **secrets** which are configuration values we want to hide from the public eye.
+This usually includes passwords or tokens which are not a direct result of setting up the infrastructure, which is why Serverless' configuration can't really help us here.
+
+In my case access to AWS infrastructure is handled by roles which Serverless manages on its own.
+This means we only have a single configuration value, the API token for the Genius API, that needs to be injected not by Serverless itself but via some interaction on part of the developer.
+While there are cloud solutions for that, which *are* nice for bigger projects, they usually require more setup than plain environment variables.
+That's why I opted against using a separate service for this and instead simply inject them as environment variables.
+For local development there's an `.env` file in the repository that has to be populated by the developer.
+For automated deployment there's a neat feature built-in to Github Actions which injects environment variables into the CI/CD pipeline after creating them manually via the website.
+
+## Conclusion
+
+Hm.
