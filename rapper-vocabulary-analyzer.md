@@ -134,7 +134,7 @@ Before talking about the code compromising this part of the application, let's h
 
 ![infrastructure](assets/aws.png)
 
-At first I was using a single queue to handle all events, as there are what AWS calls `filters` which allow selecting events according to certain fields in the message.
+At first I was using a single queue to handle all events, as there are what AWS calls **filters** which allow selecting events according to certain fields in the message.
 In my case there's `eventType` which is a string that denotes the event that was fired and could therefore be used to select the correct event from the queue.
 Now, this led to a peculiar thing to happen (for the uninitiated, at least) - jobs would execute only sometimes.
 Other times they would simply vanish into the void. But why?
@@ -298,13 +298,82 @@ There is a point to be made here about the difference between recoverable and di
 For recoverable errors, we would like to return a semantically relevant error to the caller which might have been a user triggering an invalid operation.
 For disastrous errors we probably need to abort everything we're doing and restart the application, in a more traditional setting that is.
 In a serverless setting, we can simply let the lambda function fail and let the infrastructure handle it.
-As every lambda only runs a use case that either fails or succeeds as a whole we don't have to concern ourselves with restarting our entire application as there is no application to restart in this sense.
+As every lambda only runs a use case that either fails or succeeds as a whole we don't have to concern ourselves with restarting our entire application as there is no application to restart in this sense. However, we might have to rollback or invalidate transactions if we want something akin to transactional atomicity and consistency.
+A nice thing about SQS and lambdas is that they have a built-in retry mechanism which will retry the operation a certain amount of times before giving up, giving us some lee-way to handle errors that might be recoverable after all, e.g. a network error or a throttling error.
 
-To be fair - I don't distinguish between them and really don't have any proper error handling in place at the moment.
-Errors are simply logged to CloudWatch and that's it.
-While this was enough for debugging purposes during development, it's way undersized for production.
+To be fair - I don't have any proper error handling in place at the moment.
+Errors are simply logged to CloudWatch via the middleware and that's it.
+While this was enough for debugging purposes during development, it's way undersized for production code which should use some of the aforementioned concepts to handle errors in a more graceful fashion.
 The frontend doesn't respond properly to errors either, but that's okay in my opinion as my focus was on the backend and I simply didn't want to bother with these types of bells and whistles.
 
 Another side note on an error I only encountered later on - with DynamoDB I quickly got to the point where I was hitting the capacity limits and was throttled. This effectively means that the operation will fail.
 Usually this happened due to me refreshing the page too often, which would fetch all artists from the database.
 Increasing them of course worked, but I was a little surprised to see me hitting the limits of free tier even though I was only using the application myself and there was no way for me to reduce the size of the items I was fetching any further.
+
+### Dependency Injection
+
+For this I used [Awilix](https://github.com/jeffijoe/awilix) which I wasn't familiar with.
+I chose to use it in the simplest way possible - have a single file that imports all injectable dependencies and then use it to create a container which is then used to resolve dependencies.
+This happens automatically in the use cases themselves and manually in the lambda handlers to fetch these use cases by using a wrapper function to put the container into the event's context, which I found to be a rather clean implementation that keeps the handlers from importing the container directly.
+
+::: code-group
+
+```typescript [dependency-injection.ts]
+const container = createContainer<Cradle>({
+  injectionMode: InjectionMode.CLASSIC,
+});
+
+container.register({
+  // Environment variables
+  geniusAccessToken: asValue(getEnv('GENIUS_ACCESS_TOKEN')),
+  artistTableName: asValue(getEnv('ARTIST_TABLE_NAME')),
+  integrationEventTopicArn: asValue(getEnv('INTEGRATION_EVENT_TOPIC_ARN')),
+  geniusBaseUrl: asValue('https://api.genius.com'),
+  // Models
+  artistModel: asFunction(getArtistModel).singleton(),
+  // Mappers
+  artistMapper: asClass(ArtistMapper),
+  // Factories
+  artistFactory: asClass(ConcreteArtistFactory),
+  // Repositories
+  artistRepository: asClass(DynamooseArtistRepository),
+  // Services
+  statisticsCalculator: asClass(ConcreteStatisticsCalculator),
+  // ...
+});
+```
+
+```typescript {11,12} [withDependencies.ts]
+export type DependencyAwareContext<C extends Context = Context> = C & {container: AwilixContainer<Cradle>};
+
+type DependencyMiddleware<
+  Event = unknown,
+  Result = any,
+  E = Error,
+> = () => middy.MiddlewareObj<Event, Result, E, DependencyAwareContext>;
+
+export const withDependencies: DependencyMiddleware = () => ({
+  before(request) {
+    const {context} = request;
+    context.container = container.createScope();
+  },
+});
+```
+
+```typescript {2} [handler.ts]
+const handler: ValidatedEventAPIGatewayProxyEvent<FromSchema<typeof schema>> = async (event, context) => {
+  const {triggerWorkflowUseCase} = context.container.cradle;
+  await triggerWorkflowUseCase.execute(event.body.artistId);
+
+  return formatJSONResponse({
+    message: `Lyrics for artist ${event.body.artistId} are being analyzed`,
+  });
+};
+```
+
+:::
+
+While this works quite well for a project of this scope I'd imagine it to become cumbersome as the project grows.
+Also, this majorly hinders tree-shaking as the container imports all *possible* dependencies, even when they're not needed.
+I'm sure there's a better way to go about this and construct a proper dependency graph that allows pruning unneeded dependencies. Maybe by having classes register themselves dynamically when being imported which I think is possibility that Awilix offers.
+I still stuck with this though as it did work and I didn't feel like rewriting some part *again*.
