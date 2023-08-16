@@ -450,7 +450,8 @@ The goal was to learn, mostly about DDD as well as the cloud services I used.
 That's why the frontend especially is lacking - it doesn't look good or behave anywhere near sane on mobile devices as I already know CSS rather well and I didn't want to spend any time on that.
 All in all, I kind of just stopped at the points where I had the feeling that I'm only implementing things I already know as opposed to learning something new.
 
-Another side note - while DDD *seemed* to favor a classical OOP approach at first, I get the feeling that it would work quite well with a functional approach as well.
+Another side note - while DDD *seemed* to favor a classical OOP approach at first, and I did write the project in an OOP fashion simply due to the fact that I hadn't really done OOP in some time, I get the feeling that it would work quite well with a functional approach as well.
+
 Have a look at this picture, which tries to give an overview over the typical structure of a DDD application:
 
 ![Onion Architecture](assets/onion.png)
@@ -466,3 +467,13 @@ There's a lot of glue code that connects the inner parts to the impure outside w
 
 ## Wrap Up
 
+Quite a lot of text up until here, so let's keep it short.
+
+* DDD is nice, albeit a little verbose. Good for bigger applications I'd guess but definitely over the top for something so simple. I'll definitely consider it in the future though and I'm glad to have worked with it as it's less of a concrete pattern and more of a way of thinking about the problem at hand.
+* The Serverless Framework is also nice, but far more work to setup than I had anticipated. I'm also unsure how the configuration scales as the project grows. Also, I'm missing some convenience features like proper typing or input validation for lambdas out of the box. It still seems to be one of the better alternatives though.
+* Policies are... needed, I know. I still hate them. Fortunately Serverless abstracts a lot of this away, which is one of the biggest selling points for me.
+* Coming from a more traditional development background, I found the development process to be quite cumbersome. I feel like this is an area that could be improved upon, partly in your own projects but probably the most by the cloud providers themselves.
+* I want first class Typescript support and I want it yesterday.
+* Unit testing is nice. I should do it more often.
+* Integration testing is hard. I should do it more often.
+* Writing is actually kind of fun. I should do it more often.
