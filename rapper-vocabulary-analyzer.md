@@ -314,7 +314,7 @@ The frontend doesn't respond properly to errors either, but that's okay in my op
 
 Another side note on an error I only encountered later on - with DynamoDB I quickly got to the point where I was hitting the capacity limits and was throttled. This effectively means that the operation will fail.
 Usually this happened due to me refreshing the page too often, which would fetch all artists from the database.
-Increasing them of course worked, but I was a little surprised to see me hitting the limits of free tier even though I was only using the application myself and there was no way for me to reduce the size of the items I was fetching any further.
+Increasing the limits of course worked, but I was a little surprised to see me hitting the limits of free tier even though I was only using the application myself and there was no way for me to reduce the size of the items I was fetching any further.
 
 ### Dependency Injection
 
@@ -393,12 +393,76 @@ And then there's what might be called **secrets** which are configuration values
 This usually includes passwords or tokens which are not a direct result of setting up the infrastructure, which is why Serverless' configuration can't really help us here.
 
 In my case access to AWS infrastructure is handled by roles which Serverless manages on its own.
+We do, however, have to define the exact permissions ourselves which requires at least some knowledge of the concepts of roles and policies in the context of AWS.
+Here's what that looks like:
+
+```ts {7-9}
+const serverlessConfiguration = {
+  // ...
+  iam: {
+    role: {
+      statements: [
+        {
+          Effect: 'Allow',
+          Action: ['dynamodb:PutItem', 'dynamodb:Get*', 'dynamodb:Scan*', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem'],
+          Resource: 'arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:service}-*-${sls:stage}',
+        },
+        // ...
+      ]
+    }
+  }
+  // ...
+}
+```
+
+These variables we can simply inject in our Serverless configuration file.
 This means we only have a single configuration value, the API token for the Genius API, that needs to be injected not by Serverless itself but via some interaction on part of the developer.
-While there are cloud solutions for that, which *are* nice for bigger projects, they usually require more setup than plain environment variables.
+And here's what that looks like:
+
+```ts
+const serverlessConfiguration = {
+  // ...
+  environment: {
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
+    NODE_OPTIONS: '--enable-source-maps --stack-trace-limit=1000',
+    GENIUS_ACCESS_TOKEN: '${env:GENIUS_ACCESS_TOKEN}',
+    ARTIST_TABLE_NAME: '${self:service}-Artist-${sls:stage}',
+    INTEGRATION_EVENT_TOPIC_ARN: {
+      Ref: 'IntegrationEventTopic',
+    },
+  },
+  // ...
+}
+```
+
+While there are cloud solutions for this, which *are* nice for bigger projects, they usually require more setup than plain environment variables.
 That's why I opted against using a separate service for this and instead simply inject them as environment variables.
 For local development there's an `.env` file in the repository that has to be populated by the developer.
 For automated deployment there's a neat feature built-in to Github Actions which injects environment variables into the CI/CD pipeline after creating them manually via the website.
 
-## Conclusion
+## The Missing Parts
 
-Hm.
+<iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/0YNGu4AWaO2jhByIEC4B55?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+
+While I'm quite happy with the result of this project, it's far from being finished.
+However, finishing was never the goal in the first place.
+The goal was to learn, mostly about DDD as well as the cloud services I used.
+That's why the frontend especially is lacking - it doesn't look good or behave anywhere near sane on mobile devices as I already know CSS rather well and I didn't want to spend any time on that.
+All in all, I kind of just stopped at the points where I had the feeling that I'm only implementing things I already know as opposed to learning something new.
+
+Another side note - while DDD *seemed* to favor a classical OOP approach at first, I get the feeling that it would work quite well with a functional approach as well.
+Have a look at this picture, which tries to give an overview over the typical structure of a DDD application:
+
+![Onion Architecture](assets/onion.png)
+
+Now, unfortunately I didn't find a nice image to showcase the similarity to functional programming so let me try to put it in words.
+When using a functional style, it's a common approach to have a core of pure functions which are then wrapped in impure functions that handle side effects.
+Seems familiar?
+That's because it's exactly the thing DDD tries to achieve, only looked at from a different perspective.
+By having the domain logic not concern itself with any impurity like state, HTTP calls, database connections, etc. we can focus entirely on the actual thing we're trying to solve.
+
+As this project is rather small in terms of domain logic, there's not a lot of code that could be considered pure.
+There's a lot of glue code that connects the inner parts to the impure outside world - however, now that we have this glue in place, I suspect that as we increase the domain (we could for example start analyzing playlists instead of artists, etc.) we could concern ourselves more with the inner parts and less with the glue.
+
+## Wrap Up
+
