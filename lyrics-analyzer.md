@@ -305,7 +305,7 @@ For recoverable errors, we would like to return a semantically relevant error to
 For disastrous errors we probably need to abort everything we're doing and restart the application, in a more traditional setting that is.
 In a serverless setting, we can simply let the lambda function fail and let the infrastructure handle it.
 As every lambda only runs a use case that either fails or succeeds as a whole we don't have to concern ourselves with restarting our entire application as there is no application to restart in this sense. However, we might have to rollback or invalidate transactions if we want something akin to transactional atomicity and consistency.
-A nice thing about SQS and lambdas is that they have a built-in retry mechanism which will retry the operation a certain amount of times before giving up, giving us some lee-way to handle errors that might be recoverable after all, e.g. a network error or a throttling error.
+A nice thing about lambdas is that they have a built-in retry mechanism which will retry the operation a certain amount of times before giving up, giving us some lee-way to handle errors that might be recoverable after all, e.g. a network error or a throttling error.
 
 To be fair - I don't have any proper error handling in place at the moment.
 Errors are simply logged to CloudWatch via the middleware and that's it.
