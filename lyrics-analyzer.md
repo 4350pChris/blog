@@ -1,4 +1,4 @@
-# Rapper Vocab Analyzer
+# Lyrics Analyzer
 
 [[toc]]
 

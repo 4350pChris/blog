@@ -12,7 +12,7 @@ export default defineConfig({
       {
         text: "Posts",
         items: [
-          { text: "Rapper Vocab", link: "/rapper-vocabulary-analyzer" },
+          { text: "Lyrics Analyzer", link: "/lyrics-analyzer" },
           // { text: "Slack Vuesualizer", link: "/slack-vuesualizer" },
         ],
       },
