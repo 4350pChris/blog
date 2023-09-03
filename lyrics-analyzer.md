@@ -85,6 +85,12 @@ Since I was quite sure I wouldn't want to do all of the work in a single lambda 
 For this, I decided to use [SQS](https://aws.amazon.com/sqs/), as I had already committed to using AWS and this seemed like the way to go.
 I had also considered using [SNS](https://aws.amazon.com/sns/), but decided against it, as I didn't see the purpose at the time. This proved to be a mistake, albeit one that was quite straightforward to fix, as I will explain later.
 
+#### Quick Note
+
+Another option would've been to invoke the lambda functions via AWS step functions. On one hand, it's kinda neat to be explicit about the state machine you're implementing, which in this case models the work of fetching the lyrics, parsing them, doing analysis, etc. and where each step corresponds to a lambda function, but on the other hand we would need to define this state machine using YAML files, which use their own kind of config I would've needed to learn.
+And to be honest, something doesn't feel quite right about defining your application logic in YAML files...
+So I decided against using step functions.
+
 ### Database
 
 For the database, I decided to go with [DynamoDB](https://aws.amazon.com/dynamodb/) which is less of a full-blown database and more of a key value store.
