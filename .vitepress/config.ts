@@ -4,7 +4,6 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "Ennen.dev Blog",
   description: "Just my personal blog. Built with vitepress.",
-  base: process.env.BASE_URL,
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [{ text: "Home", link: "/" }],
