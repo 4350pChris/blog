@@ -37,6 +37,8 @@ jobs:
         run: pnpm install
 
       - name: Build VuePress site
+        env:
+          BASE_URL: /blog/
         run: pnpm docs:build
 
       - name: Upload artifact
